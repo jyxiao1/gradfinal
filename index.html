@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <script src="http://d3js.org/d3.v5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/d3-scale-radial.js"></script>
+    <title>Title</title>
+</head>
+<body>
+<div id="radialChart"></div>
+<script type="text/javascript">
+
+    //reference: https://bl.ocks.org/bricedev/8aaef92e64007f882267
+
+    var smallGap = 10;
+    var largeGap = 30;
+    var innerRadius = 180;
+    var outerRadius = 300;
+    var numBars = 100;
+
+    var height = 975;
+    var width = 975;
+    //convert a straight line with bars to a circle
+
+
+
+
+    // d3 = require("d3@5");
+    // height = Math.min(640, screen.width);
+    // //height = 640;
+    // innerRadius = outerRadius - 20;
+    // outerRadius = Math.min(screen.width, height) * 0.5 - 30;
+    //
+    // innerRadius = outerRadius - 20;
+    //
+    // color = d3.scaleOrdinal()
+    //     .domain(d3.range(4))
+    //     .range(["#000000", "#FFDD89", "#957244", "#F26223"]);
+    //
+    // ribbon = d3.ribbon()
+    //     .radius(innerRadius);
+    //
+    // arc = d3.arc()
+    //     .innerRadius(innerRadius)
+    //     .outerRadius(outerRadius);
+    //
+    // chord = d3.chord()
+    //     .padAngle(0.05)
+    //     .sortSubgroups(d3.descending);
+    //
+    // formatValue = d3.formatPrefix(",.0", 1e3);
+    //
+    // function groupTicks(d, step) {
+    //     const k = (d.endAngle - d.startAngle) / d.value;
+    //     return d3.range(0, d.value, step).map(value => {
+    //         return {value: value, angle: value * k + d.startAngle};
+    //     });
+    // }
+    //
+    // data = [
+    //     [11975,  5871, 8916, 2868],
+    //     [ 1951, 10048, 2060, 6171],
+    //     [ 8010, 16145, 8090, 8045],
+    //     [ 1013,   990,  940, 6907]
+    // ];
+
+    // chart = {
+
+        // return svg.node();
+    // }
+
+
+    d3.json("top_google_charts.json").then(function(topCharts) {
+        var extent = d3.extent(topCharts.app_list, function (d) {
+            return d.rating;
+        });
+        var counter = 0;
+        console.log(extent);
+
+        //area proportionality of radial bars
+        // const y = d3.scaleLinear()
+        //     .domain([0, d => d.rating])//d3.max(topCharts.app_list, d => d.title)])
+        //     .range([innerRadius * innerRadius, outerRadius * outerRadius]);
+        // return Object.assign(d => Math.sqrt(y(d)), y);
+
+
+        var x = d3.scaleBand()
+            .range([0, 2 * Math.PI])
+            .domain(topCharts.app_list.map(function (d) {
+                return d.title
+            }));
+
+        // var chordX = d3.scaleLinear()
+        //     .range([0, Math.PI])
+        //     .domain([0,2]);
+
+
+        var nextEnd = 0;
+
+        var y = d3.scaleRadial()
+            .range([innerRadius, outerRadius])
+            .domain([0, 5]);
+
+        var positiveChordArc = d3.arc()
+            .innerRadius(innerRadius - 110)
+            .outerRadius(innerRadius - 100)
+            .startAngle(function (d) {
+                var chordX = d3.scaleLinear()
+                    .range([0, Math.PI])
+                    .domain([0, d.totalPercentage]);
+                return chordX(d.prevAnglePos);
+            })
+            .endAngle(function (d) {
+                var chordX = d3.scaleLinear()
+                    .range([0, Math.PI])
+                    .domain([0, d.totalPercentage]);
+                return chordX(d.prevAnglePos + d.positive * d.reviews_percentage);
+            })
+            .padAngle(0)
+            .padRadius(0);
+
+        var negativeChordArc = d3.arc()
+            .innerRadius(innerRadius - 110)
+            .outerRadius(innerRadius - 100)
+            .startAngle(function (d) {
+                var chordX = d3.scaleLinear()
+                    .range([0, Math.PI])
+                    .domain([0, d.totalPercentage]);
+                return chordX(d.prevAngleNeg);
+            })
+            .endAngle(function (d) {
+                var chordX = d3.scaleLinear()
+                    .range([0, Math.PI])
+                    .domain([0, d.totalPercentage]);
+                return chordX(d.prevAngleNeg + d.negative * d.reviews_percentage)
+            });
+
+            // var chordY = d3.scaleRadial()
+            //     .range([innerRadius - 110, innerRadius - 100])
+            //     .domain([0,1]);
+
+            var arc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(function(d){return y(d.rating)})
+                .startAngle(function(d) {return x(d.title)})
+                .endAngle(function(d) {return x(d.title) + x.bandwidth()})
+                .padAngle(0.02)
+                .padRadius(innerRadius);
+
+            var hoverY = d3.scaleRadial()
+                .range([innerRadius, outerRadius + 200])
+                .domain([0,5]);
+
+            var hoverArc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(function(d){return hoverY(d.rating)})
+                .startAngle(function(d) {return x(d.title)})
+                .endAngle(function(d) { return x(d.title) + x.bandwidth()})
+                .padAngle(0.01)
+                .padRadius(innerRadius);
+
+            function getTotalContribution(data)
+            {
+                var contribution;
+
+                contribution.positive = 0;
+                contribution.negative = 0;
+
+                for(var p = 0; p < data.length; p++)
+                {
+                    var temp = data[p].positive - data[p].negative;
+                    temp *= data[p].reviews_percentage;
+                    if(temp > 0)
+                    {
+                        contribution.positive += temp;
+                    }else if(temp < 0)
+                    {
+                        contribution.negative -= temp;
+                    }
+                }
+                return contribution;
+            }
+
+            function mapNextValues(data)
+            {
+                data[0].prevAngle = 0;
+                var positive = 0;
+                var negative = 0;
+                var totalPercentage = 0;
+                for(var p = 0; p < data.length; p++) {
+                    totalPercentage += data[p].reviews_percentage;
+                    data[p].prevAnglePos = positive;
+                    positive += data[p].positive * data[p].reviews_percentage;
+                    data[p].prevAngleNeg = negative;
+                    negative += data[p].negative * data[p].reviews_percentage;
+
+                }
+                for(p = 0; p < data.length; p++)
+                {
+                    data[p].prevAngleNeg += data[data.length - 1].prevAnglePos;
+                    data[p].totalPercentage = totalPercentage;
+                }
+
+                    console.log(data);
+            }
+
+
+            var color = d3.scaleOrdinal()
+            //.domain(data.columns.slice(1))
+                .range(["#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"
+                ,"#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
+                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"]);
+
+
+            var svg  = d3.select("#radialChart")
+                .append("svg")
+                .attr("id", "#outerRing")
+                .attr("width", 1000)
+                .attr("height", 1000)
+                .append("g")
+                    .attr("transform", "translate(" + 1000/2 + "," + 1000/2 + ")");
+
+
+
+
+
+            var segments =
+                svg.selectAll("path")
+                .data(topCharts.app_list)
+                .enter().append("path")
+                    //.each(function(d) { d.outerRadius = 0; })
+                    .style("fill", function (d) { return color(d.title); })
+                    .attr("d", arc)
+                    .on("mouseover", function(d) {
+                        tooltipAppData.style("display", null);
+                        var icon = svg.selectAll("image")
+                            .data([d], function(d) { return d;});
+                        icon.interrupt();
+                        update(d);
+                        // mapNextValues(d.review_analysis.topics);
+                        // console.log(d.review_analysis.topics);
+                        // svg.selectAll("path")
+                        //     .data(d.review_analysis.topics)
+                        //     .enter().append("path")
+                        //     .style("fill", "green")
+                        //     .attr("d", positiveChordArc);
+                        //     .enter().append("path")
+                        //     .style("fill", "red")
+                        //     .attr("d", negativeChordArc);
+
+                        d3.select(this)
+                            .transition()
+                            .duration(500)
+                            .ease(d3.easeExpOut)
+                            .attr("d", hoverArc);
+                    })
+
+
+                    .on("mouseout", function(d) {
+                        tooltipAppData.style("display", "none");
+                        d3.select(this)
+                            .transition()
+                            .attr("d", arc);
+
+                    })
+                    .on("mousemove", function(d) {
+                        var xPosition = d3.mouse(this)[0] - 25;
+                        var yPosition = d3.mouse(this)[1] - 70;
+
+                        //if the mouse would be too far right, move the tooltip to the left
+                        if(xPosition > width*0.3)
+                        {
+                            xPosition -= 150;
+                        }
+                        tooltipAppData.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
+                        tooltipAppData
+                            .select("#name")
+                            .text(d.title);
+                        tooltipAppData
+                            .select("#developer")
+                            .text(//"Average number of deaths: "
+                                d.developer);
+                        tooltipAppData
+                            .select("#rating")
+                            .text(//"Average population: "
+                                d.rating);
+                        tooltipAppData
+                            .select("#category")
+                            .text(d.category);
+
+                    });
+
+            // .data(topCharts.app_list[0].review_analysis.topics)
+                //         .enter().append("path")
+                //         .style("fill", "#00FF00")
+                //         .attr("d", positiveChordArc)
+                //         .enter().append("path")
+                //         .style("fill", "#00FF00")
+                //         .attr("d", negativeChordArc);
+
+
+            var tooltipAppData = svg.append("g")
+                .attr("class", "tooltip")
+                .style("display", "none");
+
+            tooltipAppData.append("rect")
+                .attr("width", 215)
+                .attr("height", 75)
+                .attr("fill", "white")
+                .attr("pointer-events", "none")
+                //.attr("outline", 1px)
+                .style("opacity", 0.7);
+
+            tooltipAppData.append("text")
+                .attr("id", "name")
+                .attr("x", 5)
+                .attr("dy", "1.2em")
+                .style("text-anchor", "left")
+                .attr("pointer-events", "none")
+                .attr("font-size", "16px")
+                .attr("font-weight", "bold");
+
+
+            tooltipAppData.append("text")
+                .attr("id", "developer")
+                .attr("x", 5)
+                .attr("dy", "2.5em")
+                .style("text-anchor", "left")
+                .attr("pointer-events", "none")
+                .attr("font-size", "14px");
+
+            tooltipAppData.append("text")
+                .attr("id", "rating")
+                .attr("x", 5)
+                .attr("dy", "3.6em")
+                .style("text-anchor", "left")
+                .attr("pointer-events", "none")
+                .attr("font-size", "14px");
+
+            tooltipAppData.append("text")
+                .attr("id", "category")
+                .attr("x", 5)
+                .attr("dy", "4.7em")
+                .style("text-anchor", "left")
+                .attr("pointer-events", "none")
+                .attr("font-size", "14px");
+
+            // var chordDiagram =
+            //     svg.selectAll("path")
+            //         .data(topCharts.app_list[0].review_analysis.topics)
+            //         .enter()//
+            // chordDiagram.append("path")
+            //         .style("fill", "#00FF00")
+            //         .attr("d", positiveChordArc);
+            //
+            // chordDiagram.append("path")
+            //         .style("fill", "#00FF00")
+            //         .attr("d", negativeChordArc);
+
+
+
+            // svg.selectAll("path")
+            //     .data(topCharts.app_list)
+            //     .enter().append("path")
+            // //.each(function(d) { d.outerRadius = 0; })
+            //     .style("fill", function (d) { return color(d.title); })
+            //     .attr("d", arc);
+
+
+
+            var scaleAmount = d3.scaleLinear()
+                .domain(0,5)
+                .range(0,200);
+
+
+            //Step One: make a doughnut
+        //Sort by categories
+        var macroData = {};
+        macroData.categories = [];
+        for(var i = 0; i < topCharts.app_list.length; i++)
+        {
+            var thisCategory = topCharts.app_list[i].category;
+            if(!macroData.categories.hasOwnProperty(thisCategory))
+            {
+                macroData.categories["name"] = thisCategory;
+                //macroData.categories[thisCategory];//.count = 0
+            }
+            //macroData.categories[thisCategory].count += 1;
+            //categories[categories.indexOf(thisCategory)].push(topCharts.app_list[i].title);
+
+        }
+
+        function update(data) {
+
+            var t = d3.transition()
+                .duration(500)
+                .ease(d3.easeExpOut);
+            // JOIN new data with old elements.
+            var icon = svg.selectAll("image")
+                .data([data], function(d) { return d;});
+
+            icon.attr("class", "update")
+                .style("opacity", 1e-6)
+                .attr('x', -50)
+                .attr('y', -50)
+                .attr('width', 100)
+                .attr('height', 100)
+                .attr('xlink:href',
+                    function(d) {
+                        return d.icon;
+                    }
+                )
+                .transition(t)
+                .style("opacity", 1);
+
+            // ENTER new elements present in new data.
+            icon.enter().append("image")
+                .attr("class", "enter")
+                .style("opacity", 1e-6)
+                .attr('x', -50)
+                .attr('y', -50)
+                .attr('width', 100)
+                .attr('height', 100)
+                .attr('xlink:href',
+                    function(d) {
+                        return d.icon;
+                    }
+                )
+                .transition(t)
+                .style("opacity", 1);
+
+            icon.exit().remove();
+
+        }
+
+
+        //Sort by ratings
+        //
+        //extract ratings and make the average
+        //
+
+    }
+    );
+
+
+</script>
+</body>
+</html>
