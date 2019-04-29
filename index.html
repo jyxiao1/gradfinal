@@ -15,126 +15,227 @@
 
     var smallGap = 10;
     var largeGap = 30;
-    var innerRadius = 180;
-    var outerRadius = 300;
+    var innerRadius = 280;
+    var outerRadius = 400;
     var numBars = 100;
 
     var height = 975;
     var width = 975;
-    //convert a straight line with bars to a circle
-
-
-
-
-    // d3 = require("d3@5");
-    // height = Math.min(640, screen.width);
-    // //height = 640;
-    // innerRadius = outerRadius - 20;
-    // outerRadius = Math.min(screen.width, height) * 0.5 - 30;
-    //
-    // innerRadius = outerRadius - 20;
-    //
-    // color = d3.scaleOrdinal()
-    //     .domain(d3.range(4))
-    //     .range(["#000000", "#FFDD89", "#957244", "#F26223"]);
-    //
-    // ribbon = d3.ribbon()
-    //     .radius(innerRadius);
-    //
-    // arc = d3.arc()
-    //     .innerRadius(innerRadius)
-    //     .outerRadius(outerRadius);
-    //
-    // chord = d3.chord()
-    //     .padAngle(0.05)
-    //     .sortSubgroups(d3.descending);
-    //
-    // formatValue = d3.formatPrefix(",.0", 1e3);
-    //
-    // function groupTicks(d, step) {
-    //     const k = (d.endAngle - d.startAngle) / d.value;
-    //     return d3.range(0, d.value, step).map(value => {
-    //         return {value: value, angle: value * k + d.startAngle};
-    //     });
-    // }
-    //
-    // data = [
-    //     [11975,  5871, 8916, 2868],
-    //     [ 1951, 10048, 2060, 6171],
-    //     [ 8010, 16145, 8090, 8045],
-    //     [ 1013,   990,  940, 6907]
-    // ];
-
-    // chart = {
-
-        // return svg.node();
-    // }
-
 
     d3.json("top_google_charts.json").then(function(topCharts) {
-        var extent = d3.extent(topCharts.app_list, function (d) {
+
+
+        var sortedList = [];
+        var categoryList = [];
+        var unsortedList = [[]];
+
+        for(var i = 0; i < topCharts.app_list.length; i++)
+            {
+                if(!categoryList.includes(topCharts.app_list[i].category))
+                {
+                    categoryList.push(topCharts.app_list[i].category);
+                    unsortedList[categoryList.length - 1] = [];
+                    for(var j = 0; j < topCharts.app_list.length; j++)
+                    {
+                        if(topCharts.app_list[j].category === topCharts.app_list[i].category)
+                        {
+                            unsortedList[unsortedList.length - 1].push(topCharts.app_list[j]);
+                        }
+                    }
+                }
+            }
+
+            function bubbleSort(arr){
+                var len = arr.length;
+                for (var q = len - 1; q >= 0; q--){
+                    for(var w = 1; w <= q; w++){
+                        if(arr[w-1].rating > arr[w].rating){
+                            var temp = arr[w-1];
+                            arr[w-1] = arr[w];
+                            arr[w] = temp;
+                        }
+                    }
+                }
+                return arr;
+            }
+
+
+        topCharts.sorted_app_list = [];
+        var categoryListAngle = [];
+        console.log(unsortedList);
+        for(i = 0; i < unsortedList.length; i++) {
+            sortedList.push(bubbleSort(unsortedList[i]));
+        }
+
+        var labelAngle = d3.scaleLinear()
+                .range([0, 2*Math.PI])
+                .domain([0, topCharts.app_list.length]);
+
+            var lastCount = 0;
+            var counter = 0;
+        for(i = 0; i < sortedList.length; i++) {
+            for(j = 0; j < sortedList[i].length; j++)
+            {
+                counter++;
+                sortedList[i][j].isGap = false; //create a gap between categories
+                topCharts.sorted_app_list.push(sortedList[i][j]);
+            }
+            topCharts.sorted_app_list[topCharts.sorted_app_list.length - 1].isGap = true; //make the last element in the list true
+            var thisObject = {};
+            thisObject.label = categoryList[i];
+            thisObject.angle = labelAngle((lastCount + counter)/2);
+            lastCount = counter;
+            categoryListAngle.push(thisObject)
+        }
+            console.log(categoryListAngle);
+
+        var extent = d3.extent(topCharts.sorted_app_list, function (d) {
             return d.rating;
         });
-        var counter = 0;
+
         console.log(extent);
 
-        //area proportionality of radial bars
-        // const y = d3.scaleLinear()
-        //     .domain([0, d => d.rating])//d3.max(topCharts.app_list, d => d.title)])
-        //     .range([innerRadius * innerRadius, outerRadius * outerRadius]);
-        // return Object.assign(d => Math.sqrt(y(d)), y);
 
 
         var x = d3.scaleBand()
             .range([0, 2 * Math.PI])
-            .domain(topCharts.app_list.map(function (d) {
+            .domain(topCharts.sorted_app_list.map(function (d) {
                 return d.title
             }));
-
-        // var chordX = d3.scaleLinear()
-        //     .range([0, Math.PI])
-        //     .domain([0,2]);
-
-
-        var nextEnd = 0;
-
+        
         var y = d3.scaleRadial()
             .range([innerRadius, outerRadius])
-            .domain([0, 5]);
+            .domain([2, 5]);
 
-        var positiveChordArc = d3.arc()
-            .innerRadius(innerRadius - 110)
-            .outerRadius(innerRadius - 100)
+        var chordX = d3.scaleLinear()
+            .range([0, Math.PI])
+            .domain([0, 1]);
+
+
+        var originPositiveRibbon = d3.ribbon()
+            .radius(innerRadius - 40)
+            .source(function (d) {
+                d.beginningOrEnd = "beginning";
+                return JSON.parse(JSON.stringify(d));
+            })
+            .target(function (d) {
+                d.beginningOrEnd = "end";
+                return JSON.parse(JSON.stringify(d));
+            })
+                .startAngle(function(d, i) {
+                    console.log(i);
+                    if (d.beginningOrEnd === "beginning") {
+                        var originChord1 = d3.scaleLinear()
+                            .range([0, Math.PI])
+                            .domain([0,  d.numCategories]);
+                        return originChord1(i - 0.55) - Math.PI / 2;
+                    } else if (d.beginningOrEnd === "end") {
+                        var originChord2 = d3.scaleLinear()
+                            .range([Math.PI/2, Math.PI * 3 / 2])
+                            .domain([0, d.totalPercentage]);
+                        var originalPoint = originChord2(d.prevAnglePos + d.positive * d.reviews_percentage);
+                        return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+                    }
+                })
+                .endAngle(function(d, i) {
+                    if (d.beginningOrEnd === "beginning") {
+                        var originChord3 = d3.scaleLinear()
+                            .range([0, Math.PI])
+                            .domain([0, d.numCategories]);
+                        console.log("ending startAngle" + originChord3(i * 11/10));
+                        console.log(originChord3);
+                        return originChord3(i-0.5) - Math.PI / 2;
+                    } else if (d.beginningOrEnd === "end") {
+                        var originChord4 = d3.scaleLinear()
+                            .range([Math.PI/2, Math.PI * 3 / 2])
+                            .domain([0, d.totalPercentage]);
+                        var originalPoint = originChord4(d.prevAnglePos);
+                        return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+
+                    }
+                });
+
+            var originNegativeRibbon = d3.ribbon()
+                .radius(innerRadius - 40)
+                .source(function (d) {
+                    d.beginningOrEnd = "beginning";
+                    return JSON.parse(JSON.stringify(d));
+                })
+                .target(function (d) {
+                    d.beginningOrEnd = "end";
+                    return JSON.parse(JSON.stringify(d));
+                })
+                .startAngle(function(d, i) {
+                    if (d.beginningOrEnd === "beginning") {
+                        var originChord1 = d3.scaleLinear()
+                            .range([0, Math.PI])
+                            .domain([0,  d.numCategories]);
+                        return originChord1(i - 0.5) - Math.PI / 2;
+                    } else if (d.beginningOrEnd === "end") {
+                        var originChord2 = d3.scaleLinear()
+                            .range([Math.PI/2, Math.PI * 3 / 2])
+                            .domain([0, d.totalPercentage]);
+                        var originalPoint = originChord2(d.prevAngleNeg + d.negative * d.reviews_percentage);
+                        return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+                    }
+                })
+                .endAngle(function(d, i) {
+                    if (d.beginningOrEnd === "beginning") {
+                        var originChord3 = d3.scaleLinear()
+                            .range([0, Math.PI])
+                            .domain([0, d.numCategories]);
+                        console.log("ending startAngle" + originChord3(i * 11/10));
+                        console.log(originChord3);
+                        return originChord3(i - 0.45) - Math.PI / 2;
+                    } else if (d.beginningOrEnd === "end") {
+                        var originChord4 = d3.scaleLinear()
+                            .range([Math.PI/2, Math.PI * 3 / 2])
+                            .domain([0, d.totalPercentage]);
+                        var originalPoint = originChord4(d.prevAngleNeg);
+                        return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+                    }
+                });
+
+
+            var positiveChordArc = d3.arc()
+            .innerRadius(innerRadius - 40)
+            .outerRadius(innerRadius - 30)
             .startAngle(function (d) {
                 var chordX = d3.scaleLinear()
-                    .range([0, Math.PI])
+                    .range([Math.PI/2, Math.PI * 3 / 2])
                     .domain([0, d.totalPercentage]);
-                return chordX(d.prevAnglePos);
+
+                var originalPoint = chordX(d.prevAnglePos + d.positive * d.reviews_percentage);
+                return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
             })
             .endAngle(function (d) {
                 var chordX = d3.scaleLinear()
-                    .range([0, Math.PI])
+                    .range([Math.PI/2, Math.PI * 3 / 2])
                     .domain([0, d.totalPercentage]);
-                return chordX(d.prevAnglePos + d.positive * d.reviews_percentage);
-            })
-            .padAngle(0)
-            .padRadius(0);
 
-        var negativeChordArc = d3.arc()
-            .innerRadius(innerRadius - 110)
-            .outerRadius(innerRadius - 100)
-            .startAngle(function (d) {
-                var chordX = d3.scaleLinear()
-                    .range([0, Math.PI])
-                    .domain([0, d.totalPercentage]);
-                return chordX(d.prevAngleNeg);
-            })
-            .endAngle(function (d) {
-                var chordX = d3.scaleLinear()
-                    .range([0, Math.PI])
-                    .domain([0, d.totalPercentage]);
-                return chordX(d.prevAngleNeg + d.negative * d.reviews_percentage)
+                var originalPoint = chordX(d.prevAnglePos);
+                return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
             });
+
+
+            var negativeChordArc = d3.arc()
+                .innerRadius(innerRadius - 40)
+                .outerRadius(innerRadius - 30)
+                .startAngle(function (d) {
+                    var chordX = d3.scaleLinear()
+                        .range([Math.PI/2, Math.PI * 3 / 2])
+                        .domain([0, d.totalPercentage]);
+                    var originalPoint = chordX(d.prevAngleNeg + d.negative * d.reviews_percentage);
+                    return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+
+                })
+                .endAngle(function (d) {
+                    var chordX = d3.scaleLinear()
+                        .range([Math.PI/2, Math.PI * 3 / 2])
+                        .domain([0, d.totalPercentage]);
+                    var originalPoint = chordX(d.prevAngleNeg);
+                    return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+                });
 
             // var chordY = d3.scaleRadial()
             //     .range([innerRadius - 110, innerRadius - 100])
@@ -144,137 +245,140 @@
                 .innerRadius(innerRadius)
                 .outerRadius(function(d){return y(d.rating)})
                 .startAngle(function(d) {return x(d.title)})
-                .endAngle(function(d) {return x(d.title) + x.bandwidth()})
-                .padAngle(0.02)
-                .padRadius(innerRadius);
+                .endAngle(function(d) {
+                    if (d.isGap === false)
+                        return x(d.title) + x.bandwidth();
+                    else
+                        return x(d.title) + x.bandwidth() - 0.01;
+                });
 
             var hoverY = d3.scaleRadial()
                 .range([innerRadius, outerRadius + 200])
                 .domain([0,5]);
 
+            var startY = d3.scaleRadial()
+                .range([innerRadius, innerRadius + 1])
+                .domain([0,5]);
+
+
             var hoverArc = d3.arc()
                 .innerRadius(innerRadius)
                 .outerRadius(function(d){return hoverY(d.rating)})
                 .startAngle(function(d) {return x(d.title)})
-                .endAngle(function(d) { return x(d.title) + x.bandwidth()})
+                .endAngle(function(d) {
+                        return x(d.title) + x.bandwidth();
+                })
                 .padAngle(0.01)
                 .padRadius(innerRadius);
 
-            function getTotalContribution(data)
-            {
-                var contribution;
+            var startArc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(function(d){return startY(d.rating)})
+                .startAngle(function(d) {return x(d.title)})
+                .endAngle(function(d) {
+                    return x(d.title) + x.bandwidth();
+                })
+                .padAngle(0.01)
+                .padRadius(innerRadius);
 
-                contribution.positive = 0;
-                contribution.negative = 0;
+            var currCategory = "";
 
-                for(var p = 0; p < data.length; p++)
-                {
-                    var temp = data[p].positive - data[p].negative;
-                    temp *= data[p].reviews_percentage;
-                    if(temp > 0)
-                    {
-                        contribution.positive += temp;
-                    }else if(temp < 0)
-                    {
-                        contribution.negative -= temp;
-                    }
-                }
-                return contribution;
-            }
+            var otherArc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(function(d){return y(d.rating)})
+                .startAngle(function(d) {return x(d.title)})
+                .endAngle(function(d) {
+                    if (d.category === currCategory)
+                        return x(d.title) + x.bandwidth() - 0.01;
+                    else
+                        return x(d.title) + x.bandwidth();
+                });
 
             function mapNextValues(data)
             {
-                data[0].prevAngle = 0;
+                var copy = JSON.parse(JSON.stringify(data)); //copy the data so we don't permanently change it
+
+                copy[0].prevAnglePos = 0;
                 var positive = 0;
                 var negative = 0;
                 var totalPercentage = 0;
-                for(var p = 0; p < data.length; p++) {
-                    totalPercentage += data[p].reviews_percentage;
-                    data[p].prevAnglePos = positive;
-                    positive += data[p].positive * data[p].reviews_percentage;
-                    data[p].prevAngleNeg = negative;
-                    negative += data[p].negative * data[p].reviews_percentage;
+                for(var p = 0; p < copy.length; p++) {
+                    totalPercentage += copy[p].reviews_percentage;
+                    copy[p].prevAnglePos = positive;
+                    positive += copy[p].positive * copy[p].reviews_percentage;
+                    copy[p].prevAngleNeg = negative;
+                    negative += copy[p].negative * copy[p].reviews_percentage;
 
                 }
-                for(p = 0; p < data.length; p++)
+                for(p = 0; p < copy.length; p++)
                 {
-                    data[p].prevAngleNeg += data[data.length - 1].prevAnglePos;
-                    data[p].totalPercentage = totalPercentage;
+                    copy[p].prevAngleNeg += positive;
+                    copy[p].totalPercentage = totalPercentage;
+                    copy[p].numCategories = copy.length;
                 }
+                console.log(copy[copy.length - 1].prevAngleNeg + copy[copy.length - 1].negative * copy[copy.length - 1].reviews_percentage);
+                console.log(copy[copy.length - 1].totalPercentage);
 
-                    console.log(data);
+                    copy.unshift(copy[0]);  //TODO: get rid of this janky as heck code! d3 data is skipping the first element for some reason
+                console.log(copy);
+                return copy;
             }
-
-
-            var color = d3.scaleOrdinal()
-            //.domain(data.columns.slice(1))
-                .range(["#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"
-                ,"#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f",
-                    "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"]);
 
 
             var svg  = d3.select("#radialChart")
                 .append("svg")
                 .attr("id", "#outerRing")
-                .attr("width", 1000)
-                .attr("height", 1000)
+                .attr("width", "100%")
+                .attr("height", screen.height)
                 .append("g")
-                    .attr("transform", "translate(" + 1000/2 + "," + 1000/2 + ")");
-
-
-
-
+                    .attr("transform", "translate(" + screen.width/2 + "," + screen.height/2 + ")");
 
             var segments =
                 svg.selectAll("path")
-                .data(topCharts.app_list)
+                .data(topCharts.sorted_app_list)
                 .enter().append("path")
-                    //.each(function(d) { d.outerRadius = 0; })
-                    .style("fill", function (d) { return color(d.title); })
-                    .attr("d", arc)
-                    .on("mouseover", function(d) {
-                        tooltipAppData.style("display", null);
+                    .attr("class", "bar")
+                    .style("fill", "#F2A69F")
+                    .attr("opacity", 0.0)
+                    .attr("d", startArc)
+                    .on("click", function(d)
+                    {
                         var icon = svg.selectAll("image")
                             .data([d], function(d) { return d;});
                         icon.interrupt();
                         update(d);
-                        // mapNextValues(d.review_analysis.topics);
-                        // console.log(d.review_analysis.topics);
-                        // svg.selectAll("path")
-                        //     .data(d.review_analysis.topics)
-                        //     .enter().append("path")
-                        //     .style("fill", "green")
-                        //     .attr("d", positiveChordArc);
-                        //     .enter().append("path")
-                        //     .style("fill", "red")
-                        //     .attr("d", negativeChordArc);
+
+                    })
+                    .on("mouseover", function(d) {
+                        tooltipAppData.style("display", null);
+
+                        currCategory = d.category;
+                        d3.selectAll(".bar")
+                            .transition()
+                            .duration(500)
+                            .ease(d3.easeExpOut)
+                            .attr("d", otherArc)
+                            .attr("opacity",
+                                function (d)
+                                {
+                                    if (d.category === currCategory)
+                                        return 1.0;
+
+                                    else
+                                        return 0.4;
+                                }
+                            );
 
                         d3.select(this)
                             .transition()
                             .duration(500)
                             .ease(d3.easeExpOut)
-                            .attr("d", hoverArc);
+                            .attr("d", hoverArc)
+                            .attr("opacity", 1.0);
+
                     })
-
-
                     .on("mouseout", function(d) {
+
                         tooltipAppData.style("display", "none");
                         d3.select(this)
                             .transition()
@@ -306,15 +410,37 @@
                             .select("#category")
                             .text(d.category);
 
-                    });
+                    })
 
-            // .data(topCharts.app_list[0].review_analysis.topics)
-                //         .enter().append("path")
-                //         .style("fill", "#00FF00")
-                //         .attr("d", positiveChordArc)
-                //         .enter().append("path")
-                //         .style("fill", "#00FF00")
-                //         .attr("d", negativeChordArc);
+                .transition()
+                    .ease(d3.easeElasticOut)
+                    .delay(function(d, i) {return 10 * i})
+                    .duration(1000)
+                    .attr("opacity", 1.0)
+                    .attr("d", arc);
+
+
+            var labels = svg.selectAll("text")
+                .data(categoryListAngle)
+                .enter().append("text")
+                .attr("dy", ".35em")
+                .attr("transform", d => `
+                    rotate(${(d.angle * 180 / Math.PI - 90)})
+                    translate(${outerRadius + 10})
+                    ${d.angle > Math.PI ? "rotate(180)" : ""}
+                  `)
+                .attr("text-anchor", d => d.angle > Math.PI ? "end" : null)
+                .text(function (d) {
+                        console.log(d.label);
+                        return d.label;
+                    }
+                )
+                .attr("opacity", 0.0)
+                .transition()
+                .duration(300)
+                .delay(function(d,i){return 50*i})
+                .ease(d3.easeCubicOut)
+                .attr("opacity", 1.0);
 
 
             var tooltipAppData = svg.append("g")
@@ -363,52 +489,25 @@
                 .attr("pointer-events", "none")
                 .attr("font-size", "14px");
 
-            // var chordDiagram =
-            //     svg.selectAll("path")
-            //         .data(topCharts.app_list[0].review_analysis.topics)
-            //         .enter()//
-            // chordDiagram.append("path")
-            //         .style("fill", "#00FF00")
-            //         .attr("d", positiveChordArc);
-            //
-            // chordDiagram.append("path")
-            //         .style("fill", "#00FF00")
-            //         .attr("d", negativeChordArc);
 
 
 
-            // svg.selectAll("path")
-            //     .data(topCharts.app_list)
-            //     .enter().append("path")
-            // //.each(function(d) { d.outerRadius = 0; })
-            //     .style("fill", function (d) { return color(d.title); })
-            //     .attr("d", arc);
+            d3.selection.prototype.moveToFront = function() {
+                return this.each(function(){
+                    this.parentNode.appendChild(this);
+                });
+            };
+            d3.selection.prototype.moveToBack = function() {
+                return this.each(function() {
+                    var firstChild = this.parentNode.firstChild;
+                    if (firstChild) {
+                        this.parentNode.insertBefore(this, firstChild);
+                    }
+                });
+            };
 
 
-
-            var scaleAmount = d3.scaleLinear()
-                .domain(0,5)
-                .range(0,200);
-
-
-            //Step One: make a doughnut
-        //Sort by categories
-        var macroData = {};
-        macroData.categories = [];
-        for(var i = 0; i < topCharts.app_list.length; i++)
-        {
-            var thisCategory = topCharts.app_list[i].category;
-            if(!macroData.categories.hasOwnProperty(thisCategory))
-            {
-                macroData.categories["name"] = thisCategory;
-                //macroData.categories[thisCategory];//.count = 0
-            }
-            //macroData.categories[thisCategory].count += 1;
-            //categories[categories.indexOf(thisCategory)].push(topCharts.app_list[i].title);
-
-        }
-
-        function update(data) {
+            function update(data) {
 
             var t = d3.transition()
                 .duration(500)
@@ -417,8 +516,85 @@
             var icon = svg.selectAll("image")
                 .data([data], function(d) { return d;});
 
+            var mappedData = mapNextValues(data.review_analysis.topics);
+
+
+            var chordDiagram = svg.selectAll("path")
+                .data(mappedData, function(d){return d;});
+
+            //console.log(data.review_analysis.topics);
+
+
+            svg.selectAll(".chord").remove();
+            svg.selectAll(".ribbon").remove();
+
+
+            chordDiagram.enter().append("path")
+                .style("opacity", 1e-6)
+                .attr("class", "chord")
+                .style("fill", "#228B22")
+                .attr("d", positiveChordArc)
+            .transition(t)
+                .style("opacity", 1.0)
+                .attr("class", "chord")
+                .style("fill", "#228B22")
+                .attr("d", positiveChordArc);
+
+            chordDiagram.enter().append("path")
+                .style("opacity", 1e-6)
+                .attr("class", "chord")
+                .style("fill", "#8B0000")
+                .attr("d", negativeChordArc)
+            .transition(t)
+                .style("opacity", 1.0)
+                .attr("class", "chord")
+                .style("fill", "#8B0000")
+                .attr("d", negativeChordArc);
+
+            chordDiagram.enter().append("path")
+                .style("opacity", 1e-6)
+                .attr("class", "ribbon")
+                .style("fill", "#228B22")
+                .attr("d", originPositiveRibbon)
+                .attr("stroke", "#000")
+            .transition(t)
+                .style("opacity", 0.5)
+                .attr("class", "ribbon")
+                .style("fill", "#228B22")
+                .attr("d", originPositiveRibbon)
+                .attr("stroke", "#000");
+
+            chordDiagram.enter().append("path")
+                .style("opacity", 1e-6)
+                .attr("class", "ribbon")
+                .style("fill", "#8B0000")
+                .attr("d", originNegativeRibbon)
+                .attr("stroke", "#000")
+            .transition(t)
+                .style("opacity", 0.5)
+                .attr("class", "ribbon")
+                .style("fill", "#8B0000")
+                .attr("d", originNegativeRibbon)
+                .attr("stroke", "#000");
+
+
             icon.attr("class", "update")
                 .style("opacity", 1e-6)
+                .attr('x', -50)
+                .attr('y', -50)
+                .attr('width', 100)
+                .attr('height', 100)
+                .moveToFront()
+                .attr('xlink:href',
+                    function(d) {
+                        return d.icon;
+                    }
+                )
+                .transition(t)
+                .style("opacity", 1);
+
+
+            icon.style("opacity", 1e-6)
                 .attr('x', -50)
                 .attr('y', -50)
                 .attr('width', 100)
@@ -431,9 +607,7 @@
                 .transition(t)
                 .style("opacity", 1);
 
-            // ENTER new elements present in new data.
             icon.enter().append("image")
-                .attr("class", "enter")
                 .style("opacity", 1e-6)
                 .attr('x', -50)
                 .attr('y', -50)
@@ -449,13 +623,11 @@
 
             icon.exit().remove();
 
+
+
+
         }
 
-
-        //Sort by ratings
-        //
-        //extract ratings and make the average
-        //
 
     }
     );
