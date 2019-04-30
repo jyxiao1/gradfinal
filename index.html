@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
     <meta charset="UTF-8">
@@ -8,6 +9,7 @@
     <title>Title</title>
 </head>
 <body>
+<link rel="stylesheet" href="style.css">
 <div id="radialChart"></div>
 <script type="text/javascript">
 
@@ -15,8 +17,8 @@
 
     var smallGap = 10;
     var largeGap = 30;
-    var innerRadius = 280;
-    var outerRadius = 400;
+    var innerRadius = 320;
+    var outerRadius = 450;
     var numBars = 100;
 
     var height = 975;
@@ -25,11 +27,11 @@
     d3.json("top_google_charts.json").then(function(topCharts) {
 
 
-        var sortedList = [];
-        var categoryList = [];
-        var unsortedList = [[]];
+            var sortedList = [];
+            var categoryList = [];
+            var unsortedList = [[]];
 
-        for(var i = 0; i < topCharts.app_list.length; i++)
+            for(var i = 0; i < topCharts.app_list.length; i++)
             {
                 if(!categoryList.includes(topCharts.app_list[i].category))
                 {
@@ -60,68 +62,73 @@
             }
 
 
-        topCharts.sorted_app_list = [];
-        var categoryListAngle = [];
-        console.log(unsortedList);
-        for(i = 0; i < unsortedList.length; i++) {
-            sortedList.push(bubbleSort(unsortedList[i]));
-        }
+            topCharts.sorted_app_list = [];
+            var categoryListAngle = [];
+            console.log(unsortedList);
+            for(i = 0; i < unsortedList.length; i++) {
+                sortedList.push(bubbleSort(unsortedList[i]));
+            }
 
-        var labelAngle = d3.scaleLinear()
+            var labelAngle = d3.scaleLinear()
                 .range([0, 2*Math.PI])
                 .domain([0, topCharts.app_list.length]);
 
             var lastCount = 0;
             var counter = 0;
-        for(i = 0; i < sortedList.length; i++) {
-            for(j = 0; j < sortedList[i].length; j++)
-            {
-                counter++;
-                sortedList[i][j].isGap = false; //create a gap between categories
-                topCharts.sorted_app_list.push(sortedList[i][j]);
+            for(i = 0; i < sortedList.length; i++) {
+                for(j = 0; j < sortedList[i].length; j++)
+                {
+                    counter++;
+                    sortedList[i][j].isGap = false; //create a gap between categories
+                    topCharts.sorted_app_list.push(sortedList[i][j]);
+                }
+                topCharts.sorted_app_list[topCharts.sorted_app_list.length - 1].isGap = true; //make the last element in the list true
+                var thisObject = {};
+                thisObject.label = categoryList[i];
+                thisObject.angle = labelAngle((lastCount + counter)/2);
+                lastCount = counter;
+                categoryListAngle.push(thisObject)
             }
-            topCharts.sorted_app_list[topCharts.sorted_app_list.length - 1].isGap = true; //make the last element in the list true
-            var thisObject = {};
-            thisObject.label = categoryList[i];
-            thisObject.angle = labelAngle((lastCount + counter)/2);
-            lastCount = counter;
-            categoryListAngle.push(thisObject)
-        }
             console.log(categoryListAngle);
 
-        var extent = d3.extent(topCharts.sorted_app_list, function (d) {
-            return d.rating;
-        });
+            var extent = d3.extent(topCharts.sorted_app_list, function (d) {
+                return d.rating;
+            });
 
-        console.log(extent);
-
-
-
-        var x = d3.scaleBand()
-            .range([0, 2 * Math.PI])
-            .domain(topCharts.sorted_app_list.map(function (d) {
-                return d.title
-            }));
-        
-        var y = d3.scaleRadial()
-            .range([innerRadius, outerRadius])
-            .domain([2, 5]);
-
-        var chordX = d3.scaleLinear()
-            .range([0, Math.PI])
-            .domain([0, 1]);
+            console.log(extent);
 
 
-        var originPositiveRibbon = d3.ribbon()
-            .radius(innerRadius - 40)
-            .source(function (d) {
-                d.beginningOrEnd = "beginning";
-                return JSON.parse(JSON.stringify(d));
-            })
-            .target(function (d) {
-                d.beginningOrEnd = "end";
-                return JSON.parse(JSON.stringify(d));
-            })
+
+            var x = d3.scaleBand()
+                .range([0, 2 * Math.PI])
+                .domain(topCharts.sorted_app_list.map(function (d) {
+                    return d.title
+                }));
+
+            var y = d3.scaleRadial()
+                .range([innerRadius, outerRadius])
+                .domain([2.5, 5]);
+
+            var reverseY = d3.scaleRadial()
+                .range([2.5, 5])
+                .domain([innerRadius, outerRadius]);
+
+
+            var chordX = d3.scaleLinear()
+                .range([0, Math.PI])
+                .domain([0, 1]);
+
+
+            var positiveRibbon = d3.ribbon()
+                .radius(innerRadius - 100)
+                .source(function (d) {
+                    d.beginningOrEnd = "beginning";
+                    return JSON.parse(JSON.stringify(d));
+                })
+                .target(function (d) {
+                    d.beginningOrEnd = "end";
+                    return JSON.parse(JSON.stringify(d));
+                })
                 .startAngle(function(d, i) {
                     console.log(i);
                     if (d.beginningOrEnd === "beginning") {
@@ -155,8 +162,8 @@
                     }
                 });
 
-            var originNegativeRibbon = d3.ribbon()
-                .radius(innerRadius - 40)
+            var negativeRibbon = d3.ribbon()
+                .radius(innerRadius - 100)
                 .source(function (d) {
                     d.beginningOrEnd = "beginning";
                     return JSON.parse(JSON.stringify(d));
@@ -198,29 +205,29 @@
 
 
             var positiveChordArc = d3.arc()
-            .innerRadius(innerRadius - 40)
-            .outerRadius(innerRadius - 30)
-            .startAngle(function (d) {
-                var chordX = d3.scaleLinear()
-                    .range([Math.PI/2, Math.PI * 3 / 2])
-                    .domain([0, d.totalPercentage]);
+                .innerRadius(innerRadius - 100)
+                .outerRadius(innerRadius - 90)
+                .startAngle(function (d) {
+                    var chordX = d3.scaleLinear()
+                        .range([Math.PI/2, Math.PI * 3 / 2])
+                        .domain([0, d.totalPercentage]);
 
-                var originalPoint = chordX(d.prevAnglePos + d.positive * d.reviews_percentage);
-                return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
-            })
-            .endAngle(function (d) {
-                var chordX = d3.scaleLinear()
-                    .range([Math.PI/2, Math.PI * 3 / 2])
-                    .domain([0, d.totalPercentage]);
+                    var originalPoint = chordX(d.prevAnglePos + d.positive * d.reviews_percentage);
+                    return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+                })
+                .endAngle(function (d) {
+                    var chordX = d3.scaleLinear()
+                        .range([Math.PI/2, Math.PI * 3 / 2])
+                        .domain([0, d.totalPercentage]);
 
-                var originalPoint = chordX(d.prevAnglePos);
-                return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
-            });
+                    var originalPoint = chordX(d.prevAnglePos);
+                    return originalPoint - 2*(originalPoint - Math.PI); //return the inversion
+                });
 
 
             var negativeChordArc = d3.arc()
-                .innerRadius(innerRadius - 40)
-                .outerRadius(innerRadius - 30)
+                .innerRadius(innerRadius - 100)
+                .outerRadius(innerRadius - 90)
                 .startAngle(function (d) {
                     var chordX = d3.scaleLinear()
                         .range([Math.PI/2, Math.PI * 3 / 2])
@@ -266,7 +273,7 @@
                 .outerRadius(function(d){return hoverY(d.rating)})
                 .startAngle(function(d) {return x(d.title)})
                 .endAngle(function(d) {
-                        return x(d.title) + x.bandwidth();
+                    return x(d.title) + x.bandwidth();
                 })
                 .padAngle(0.01)
                 .padRadius(innerRadius);
@@ -319,11 +326,13 @@
                 console.log(copy[copy.length - 1].prevAngleNeg + copy[copy.length - 1].negative * copy[copy.length - 1].reviews_percentage);
                 console.log(copy[copy.length - 1].totalPercentage);
 
-                    copy.unshift(copy[0]);  //TODO: get rid of this janky as heck code! d3 data is skipping the first element for some reason
+                copy.unshift(copy[0]);  //TODO: get rid of this janky as heck code! d3 data is skipping the first element for some reason
                 console.log(copy);
                 return copy;
             }
 
+
+            console.log(screen.height);
 
             var svg  = d3.select("#radialChart")
                 .append("svg")
@@ -331,12 +340,12 @@
                 .attr("width", "100%")
                 .attr("height", screen.height)
                 .append("g")
-                    .attr("transform", "translate(" + screen.width/2 + "," + screen.height/2 + ")");
+                .attr("transform", "translate(" + screen.width/2 + "," + screen.height/2 + ")");
 
             var segments =
                 svg.selectAll("path")
-                .data(topCharts.sorted_app_list)
-                .enter().append("path")
+                    .data(topCharts.sorted_app_list)
+                    .enter().append("path")
                     .attr("class", "bar")
                     .style("fill", "#F2A69F")
                     .attr("opacity", 0.0)
@@ -412,7 +421,7 @@
 
                     })
 
-                .transition()
+                    .transition()
                     .ease(d3.easeElasticOut)
                     .delay(function(d, i) {return 10 * i})
                     .duration(1000)
@@ -440,6 +449,7 @@
                 .duration(300)
                 .delay(function(d,i){return 50*i})
                 .ease(d3.easeCubicOut)
+                .attr("class", "label")
                 .attr("opacity", 1.0);
 
 
@@ -506,130 +516,317 @@
                 });
             };
 
+            var ratingLabel = svg.append("text")
+                .attr("id", "ratingLabel")
+                .attr("y", -outerRadius - 50)
+                // .attr("dy", "4.7em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "40px")
+                .text("5.0");
+
+            var ratingCircle = svg
+                .append("circle")
+                .attr("class", "circle")
+                .classed("outer", true)
+                .attr("r", 100)
+                .style("fill", "none")
+                .transition()
+                .delay(500)
+                .duration(2000)
+                .ease(d3.easeElasticOut)
+                .attr("r", outerRadius)
+                .style("fill", "none")
+                .style("stroke", "#A27C40")
+                .style("stroke-width", "2");
+
+            var isRatingClicked = false;
+
+            var currRadius = outerRadius;
+            var ratingRhombus = svg
+                .append("rect")
+                .attr("width", 30)
+                .attr("height", 30)
+                .attr('transform','translate(0,' + (-100 - 30*Math.pow(2, 0.5)/2) +')'+
+                    'rotate(45)'
+                )
+                .call(d3.drag()
+                    .on("start", function() {d3.select(this).raise().classed("active", true);})
+                    .on("drag", function()
+                    {
+                        var yPosition = Math.abs(d3.event.y);
+
+                        if(yPosition <= outerRadius && yPosition >= innerRadius - 5)
+                        {
+                            d3.select(this)
+                                .attr('transform','translate(0,' + (-(yPosition) - 30*Math.pow(2, 0.5)/2 + 1) +')'+
+                                    'rotate(45)'
+                                );
+                            d3.selectAll(".circle").attr("r",yPosition);
+                            d3.select("#ratingLabel")
+                                .text(function(){return reverseY(yPosition).toFixed((2))})
+                                .style("fill", "#228B22")
+                                .attr("y", -yPosition - 50)
+                                .transition()
+                                .duration(9000)
+                                .ease(d3.easeExpOut)
+                                .style("fill", "#000000");
+
+
+                            d3.selectAll(".bar")
+                                .transition()
+                                .duration(500)
+                                .ease(d3.easeExpOut)
+                                .style("fill", function (d) {
+                                    if(d.rating > reverseY(yPosition))
+                                    {
+                                        return "#EAE3D6";
+                                    }else{
+                                        return "#F2A69F";
+                                    }
+
+                                });
+                        }
+                    })
+                    .on("end", function() {d3.select(this).classed("active", false);}
+                    )
+                )
+                .attr("opacity", "0.0")
+
+                .transition()
+                .delay(500)
+                .duration(2000)
+                .ease(d3.easeElasticOut)
+                .style("fill", "#A27C40")
+                .attr("opacity", "1.0")
+                .attr('transform','translate(0,' + (-outerRadius - 30*Math.pow(2, 0.5)/2 + 1) +')'+
+                    'rotate(45)'
+                )
+            ;
+
+
+            var circle = d3.selectAll(".circle")
+                .data(ratingCircle)
+                .each(function(circle)
+                {
+                    circle.on("brush", renderAll)
+                        .on("brushend")
+                });
 
             function update(data) {
 
-            var t = d3.transition()
-                .duration(500)
-                .ease(d3.easeExpOut);
-            // JOIN new data with old elements.
-            var icon = svg.selectAll("image")
-                .data([data], function(d) { return d;});
+                var t = d3.transition()
+                    .duration(500)
+                    .ease(d3.easeExpOut);
+                // JOIN new data with old elements.
+                var icon = svg.selectAll("image")
+                    .data([data], function(d) { return d;});
 
-            var mappedData = mapNextValues(data.review_analysis.topics);
-
-
-            var chordDiagram = svg.selectAll("path")
-                .data(mappedData, function(d){return d;});
-
-            //console.log(data.review_analysis.topics);
+                var mappedData = mapNextValues(data.review_analysis.topics);
 
 
-            svg.selectAll(".chord").remove();
-            svg.selectAll(".ribbon").remove();
+                var chordDiagram = svg.selectAll("path")
+                    .data(mappedData, function(d){return d;});
+
+                var chordCircles = svg.selectAll("circle")
+                    .data(mappedData, function(d){return d;});
+
+                var chordLabels = svg.selectAll("text")
+                    .data(mappedData, function(d){return d;});
+
+                svg.selectAll(".chord").remove();
+                svg.selectAll(".ribbon").remove();
+                svg.selectAll(".chordCircle").remove();
+                svg.selectAll(".chordLabel").remove();
+
+                chordCircles.enter().append("text")
+                    .attr("class", "chordLabel")
+                    .text(function(d, i){
+                            if(i !== 0) //skip the first result because of our previous bandaid fix
+                                return d.topic_name;
+                            else
+                                return "";
+
+                })
+                    .attr("transform", function(d, i) {
+                        var circleAngle = d3.scaleLinear()
+                            .range([0, Math.PI])
+                            .domain([0,  d.numCategories]);
+                        if(i !== 0) //skip the first result because of our previous bandaid fix
+                            return `
+                        rotate(${((circleAngle(i - 0.5) - Math.PI / 2) * 180 / Math.PI - 90)})
+                        translate(${innerRadius - 80})
+                        ${(circleAngle(i - 0.5) - Math.PI / 2) < 0 ? "rotate(180)" : ""}
+                     `;})
+                    .attr("text-anchor", function(d, i) {
+                        var circleAngle = d3.scaleLinear()
+                            .range([0, Math.PI])
+                            .domain([0,  d.numCategories]);
+                            return (circleAngle(i - 0.5) - Math.PI / 2) < 0 ? "end" : null;})
+                    .style("fill", function(d){
+                        if(d.positive > d.negative)
+                        {
+                            return "#228B22";
+                        }else{
+                            return "#8B0000";
+                        }
+                    });
+
+                chordCircles.enter().append("circle")
+                    .attr("class", "chordCircle")
+                    .attr("r", function(d, i)
+                    {
+                        if(i !== 0) //skip the first result because of our previous bandaid fix
+                            return 15;
+                        else
+                            return 0;
+                    })
+                    .attr("transform", function(d, i) {
+                        var circleAngle = d3.scaleLinear()
+                            .range([0, Math.PI])
+                            .domain([0,  d.numCategories]);
+                        return `
+                        rotate(${((circleAngle(i - 0.5) - Math.PI / 2) * 180 / Math.PI - 90)})
+                        translate(${innerRadius - 100})
+                     `;})
+                    .style("fill", function(d){
+                        if(d.positive > d.negative)
+                        {
+                            return "#228B22";
+                        }else{
+                            return "#8B0000";
+                        }
+                    })
+                    .attr("opacity", 0.8)
+                    .attr("stroke-width", 2)
+                    .attr("stroke", "#000")
+                    .on("mouseover", function(d){
+                        var thisCategory = d.topic_name;
+                        d3.select(this)
+                            .transition()
+                            .duration(500)
+                            .ease(d3.easeExpOut)
+                            .attr("r", 30);
+                        d3.selectAll(".chord")
+                            .transition()
+                            .duration(500)
+                            .ease(d3.easeExpOut)
+
+                            .style("opacity", function(d) {
+                                if(d.topic_name !== thisCategory){
+                                    return 0.5;
+                                }else{
+                                    return 1.0;
+                            }
+                        });
+                    })
+                    .on("mouseout", function(d){
+                        d3.select(this)
+                            .transition()
+                            .duration(500)
+                            .ease(d3.easeExpOut)
+                            .attr("r", 15)
+                    });
 
 
-            chordDiagram.enter().append("path")
-                .style("opacity", 1e-6)
-                .attr("class", "chord")
-                .style("fill", "#228B22")
-                .attr("d", positiveChordArc)
-            .transition(t)
-                .style("opacity", 1.0)
-                .attr("class", "chord")
-                .style("fill", "#228B22")
-                .attr("d", positiveChordArc);
 
-            chordDiagram.enter().append("path")
-                .style("opacity", 1e-6)
-                .attr("class", "chord")
-                .style("fill", "#8B0000")
-                .attr("d", negativeChordArc)
-            .transition(t)
-                .style("opacity", 1.0)
-                .attr("class", "chord")
-                .style("fill", "#8B0000")
-                .attr("d", negativeChordArc);
+                chordDiagram.enter().append("path")
+                    .style("opacity", 1e-6)
+                    .attr("class", "chord")
+                    .style("fill", "#228B22")
+                    .attr("d", positiveChordArc)
+                    .transition(t)
+                    .style("opacity", 1.0)
+                    .attr("class", "chord")
+                    .style("fill", "#228B22")
+                    .attr("d", positiveChordArc);
 
-            chordDiagram.enter().append("path")
-                .style("opacity", 1e-6)
-                .attr("class", "ribbon")
-                .style("fill", "#228B22")
-                .attr("d", originPositiveRibbon)
-                .attr("stroke", "#000")
-            .transition(t)
-                .style("opacity", 0.5)
-                .attr("class", "ribbon")
-                .style("fill", "#228B22")
-                .attr("d", originPositiveRibbon)
-                .attr("stroke", "#000");
+                chordDiagram.enter().append("path")
+                    .style("opacity", 1e-6)
+                    .attr("class", "chord")
+                    .style("fill", "#8B0000")
+                    .attr("d", negativeChordArc)
+                    .transition(t)
+                    .style("opacity", 1.0)
+                    .attr("class", "chord")
+                    .style("fill", "#8B0000")
+                    .attr("d", negativeChordArc);
 
-            chordDiagram.enter().append("path")
-                .style("opacity", 1e-6)
-                .attr("class", "ribbon")
-                .style("fill", "#8B0000")
-                .attr("d", originNegativeRibbon)
-                .attr("stroke", "#000")
-            .transition(t)
-                .style("opacity", 0.5)
-                .attr("class", "ribbon")
-                .style("fill", "#8B0000")
-                .attr("d", originNegativeRibbon)
-                .attr("stroke", "#000");
+                chordDiagram.enter().append("path")
+                    .style("opacity", 1e-6)
+                    .attr("class", "ribbon")
+                    .style("fill", "#228B22")
+                    .attr("d", positiveRibbon)
+                    .attr("stroke", "#000")
+                    .transition(t)
+                    .style("opacity", 0.5)
+                    .attr("class", "ribbon")
+                    .style("fill", "#228B22")
+                    .attr("d", positiveRibbon)
+                    .attr("stroke", "#000");
 
-
-            icon.attr("class", "update")
-                .style("opacity", 1e-6)
-                .attr('x', -50)
-                .attr('y', -50)
-                .attr('width', 100)
-                .attr('height', 100)
-                .moveToFront()
-                .attr('xlink:href',
-                    function(d) {
-                        return d.icon;
-                    }
-                )
-                .transition(t)
-                .style("opacity", 1);
+                chordDiagram.enter().append("path")
+                    .style("opacity", 1e-6)
+                    .attr("class", "ribbon")
+                    .style("fill", "#8B0000")
+                    .attr("d", negativeRibbon)
+                    .attr("stroke", "#000")
+                    .transition(t)
+                    .style("opacity", 0.5)
+                    .attr("class", "ribbon")
+                    .style("fill", "#8B0000")
+                    .attr("d", negativeRibbon)
+                    .attr("stroke", "#000");
 
 
-            icon.style("opacity", 1e-6)
-                .attr('x', -50)
-                .attr('y', -50)
-                .attr('width', 100)
-                .attr('height', 100)
-                .attr('xlink:href',
-                    function(d) {
-                        return d.icon;
-                    }
-                )
-                .transition(t)
-                .style("opacity", 1);
-
-            icon.enter().append("image")
-                .style("opacity", 1e-6)
-                .attr('x', -50)
-                .attr('y', -50)
-                .attr('width', 100)
-                .attr('height', 100)
-                .attr('xlink:href',
-                    function(d) {
-                        return d.icon;
-                    }
-                )
-                .transition(t)
-                .style("opacity", 1);
-
-            icon.exit().remove();
+                icon.attr("class", "update")
+                    .style("opacity", 1e-6)
+                    .attr('x', -50)
+                    .attr('y', -50)
+                    .attr('width', 100)
+                    .attr('height', 100)
+                    .moveToFront()
+                    .attr('xlink:href',
+                        function(d) {
+                            return d.icon;
+                        }
+                    )
+                    .transition(t)
+                    .style("opacity", 1);
 
 
+                icon.style("opacity", 1e-6)
+                    .attr('x', -50)
+                    .attr('y', -50)
+                    .attr('width', 100)
+                    .attr('height', 100)
+                    .attr('xlink:href',
+                        function(d) {
+                            return d.icon;
+                        }
+                    )
+                    .transition(t)
+                    .style("opacity", 1);
+
+                icon.enter().append("image")
+                    .style("opacity", 1e-6)
+                    .attr('x', -50)
+                    .attr('y', -50)
+                    .attr('width', 100)
+                    .attr('height', 100)
+                    .attr('xlink:href',
+                        function(d) {
+                            return d.icon;
+                        }
+                    )
+                    .transition(t)
+                    .style("opacity", 1);
+
+                icon.exit().remove();
+
+            }
 
 
         }
-
-
-    }
     );
 
 
