@@ -342,7 +342,7 @@
                                 tooltipAppData
                                     .select("#rating")
                                     .text(
-                                        d.rating);
+                                        d.rating.toFixed(2) + "/5 stars");
                                 tooltipAppData
                                     .select("#category")
                                     .text(d.category);
@@ -388,7 +388,7 @@
                         .attr("y", -outerRadius - 50)
                         .style("text-anchor", "middle")
                         .attr("font-size", "40px")
-                        .text("5.0");
+                        .text("5.0/5 stars");
 
                     var ratingCircle = svg
                         .append("circle")
@@ -422,7 +422,7 @@
                             .on("drag", function () {
                                 var yPosition = Math.abs(d3.event.y);
 
-                                if (yPosition <= outerRadius && yPosition >= innerRadius - 5) {
+                                if (yPosition <= outerRadius +2 && yPosition >= innerRadius - 2) {
                                     d3.select(this)
                                         .attr('transform', 'translate(0,' + (-(yPosition) - 30 * Math.pow(2, 0.5) / 2 + 1) + ')' +
                                             'rotate(45)'
@@ -430,7 +430,7 @@
                                     d3.selectAll(".circle").attr("r", yPosition);
                                     d3.select("#ratingLabel")
                                         .text(function () {
-                                            return reverseY(yPosition).toFixed((2))
+                                            return reverseY(yPosition).toFixed(2) + "/5 stars";
                                         })
                                         .style("fill", "#FB8F27")
                                         .attr("y", -yPosition - 50)
