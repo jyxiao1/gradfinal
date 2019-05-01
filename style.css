@@ -1,5 +1,5 @@
 p {
-  font-family: Helvetica, "Trebuchet MS", Verdana, sans-serif;
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
 }
 
 .active{
@@ -8,6 +8,7 @@ p {
 }
 
 body {
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
   -webkit-user-select:none;
   -khtml-user-select:none;
   -moz-user-select:none;
@@ -15,6 +16,21 @@ body {
   -o-user-select:none;
   user-select:none;
 }
+text {
+  pointer-events: none
+}
+
+.leftside
+{
+  width: 20%;
+  float: left;
+}
+.rightside
+{
+  width: 80%;
+  float: right;
+}
+
 
 #topFrame {
   width: 100%;
@@ -110,7 +126,7 @@ body {
   padding: 20px 0 0 20px;
   position:absolute;
   bottom: 0;
-  left: 16;
+  left: 16%;
   width: 90%;
   height: 50%;
   display: inline-block;
@@ -175,7 +191,6 @@ body {
 
 #icon {
   flex: 1;
-  background-image: ("");
   background-size: contain;
   background-repeat: no-repeat;
 }
