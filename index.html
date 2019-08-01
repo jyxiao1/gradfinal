@@ -9,7 +9,7 @@
 </head>
 <script type="text/javascript" src="script.js"></script>
 <body>
-<div id="fadebackground"></div>
+<div id = "fadebackground"></div>
 <div class = "leftside" id="leftSidebar"></div>
 <div class = "rightside" id="radialChart"></div>
 <div class = "rightside" id="rightSidebar"></div>
@@ -34,30 +34,31 @@
             .append("svg")
             .attr("id", "#leftSidebarSvg")
             .attr("width", "100%")
-            .attr("height", window.innerHeight)
+            .attr("height", "100%")
             .append("g");
 
         var totalY = 0;
 
         leftSidebar.append("rect")
-            .attr("width", (screen.width/5))
-            .attr("height", 150)
+            .attr("width", "100%")
+            .attr("height", 75)
             .attr("fill","#C5AF8A");
 
-        totalY += 160;
+        totalY += 85;
 
         leftSidebar.append("rect")  //select either the apple store or google play store
-            .attr("width", (screen.width/5))
+            .attr("width", "100%")
             .attr("height", 150)
             .attr("y", totalY)
             .attr("fill","#F0EFEC");
+
         leftSidebar.append("text")
-                .attr("x",20)
-                .attr("y", totalY + 20)
+                .attr("x", 20)
+                .attr("y", totalY + 30)
                 .style("text-anchor", "left")
                 .attr("font-size", "18px")
                 .attr("fill", "#000")
-                .text("Source Operating System");
+                .text("Source");
         leftSidebar.append("text")
             .attr("id", "androidLabel")
                 .attr("x",(screen.width/15 - 20))
